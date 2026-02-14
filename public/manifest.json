@@ -1,10 +1,10 @@
 {
-  "name": "Tailwind Admin Dashboard",
-  "short_name": "TailwindAdmin",
+  "name": "Lumore Admin",
+  "short_name": "LumoreAdmin",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#5d87ff",
+  "theme_color": "#541388",
   "icons": [
     {
       "src": "/icons/icon-192.png",
