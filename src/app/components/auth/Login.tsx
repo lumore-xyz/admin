@@ -1,88 +1,90 @@
-'use client'
+"use client";
 
-import FullLogo from '@/app/(DashboardLayout)/layout/shared/logo/FullLogo'
-import CardBox from '../shared/CardBox'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Chrome } from 'lucide-react'
-import { useGoogleLogin } from '@react-oauth/google'
-import { loginAdminWithGoogle } from '@/lib/admin-api'
-import { getAdminSession, setAdminSession } from '@/lib/admin-auth'
+import FullLogo from "@/app/(DashboardLayout)/layout/shared/logo/FullLogo";
+import { Button } from "@/components/ui/button";
+import { loginAdminWithGoogle } from "@/lib/admin-api";
+import { getAdminSession, setAdminSession } from "@/lib/admin-auth";
+import { useGoogleLogin } from "@react-oauth/google";
+import { Chrome } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import CardBox from "../shared/CardBox";
 
 export const Login = () => {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const session = getAdminSession()
+    const session = getAdminSession();
     if (session?.accessToken && session?.user?.isAdmin) {
-      router.replace('/dashboard')
+      router.replace("/");
     }
-  }, [router])
+  }, [router]);
 
   const googleLogin = useGoogleLogin({
-    flow: 'auth-code',
+    flow: "auth-code",
     onSuccess: async (tokenResponse) => {
-      setError('')
-      setLoading(true)
+      setError("");
+      setLoading(true);
       try {
-        const res = await loginAdminWithGoogle(tokenResponse.code)
-        const user = res?.data?.user || res?.user
-        const accessToken = res?.data?.accessToken || res?.accessToken
+        const res = await loginAdminWithGoogle(tokenResponse.code);
+        const user = res?.data?.user || res?.user;
+        const accessToken = res?.data?.accessToken || res?.accessToken;
         if (!user?.isAdmin || !accessToken) {
-          setError('Admin access denied.')
-          return
+          setError("Admin access denied.");
+          return;
         }
         setAdminSession({
           accessToken,
           user,
-        })
-        router.replace('/dashboard')
+        });
+        router.replace("/");
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : 'Google login failed'
-        setError(message)
+          err instanceof Error ? err.message : "Google login failed";
+        setError(message);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     },
-    onError: () => setError('Google authentication was cancelled or failed.'),
-  })
+    onError: () => setError("Google authentication was cancelled or failed."),
+  });
 
   return (
     <>
-      <div className='h-screen w-full flex justify-center items-center bg-lightprimary'>
-        <div className='md:min-w-[450px] min-w-max'>
+      <div className="h-screen w-full flex justify-center items-center bg-lightprimary">
+        <div className="md:min-w-[450px] min-w-max">
           <CardBox>
-            <div className='flex justify-center mb-4'>
+            <div className="flex justify-center mb-4">
               <FullLogo />
             </div>
-            <p className='text-sm text-muted-foreground text-center mb-6'>
+            <p className="text-sm text-muted-foreground text-center mb-6">
               Sign in with your admin Google account.
             </p>
             {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
-              <p className='text-sm text-warning mb-4'>
+              <p className="text-sm text-warning mb-4">
                 Missing `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in admin-template env.
               </p>
             ) : null}
-            {error ? <p className='text-sm text-error mb-4'>{error}</p> : null}
+            {error ? <p className="text-sm text-error mb-4">{error}</p> : null}
             <Button
-              className='w-full'
+              className="w-full"
               disabled={loading}
-              onClick={() => googleLogin()}>
+              onClick={() => googleLogin()}
+            >
               <Chrome size={16} />
-              {loading ? 'Signing in...' : 'Continue with Google'}
+              {loading ? "Signing in..." : "Continue with Google"}
             </Button>
-            <div className='flex items center gap-2 justify-center mt-6 flex-wrap'>
-              <p className='text-base font-medium text-muted-foreground'>
+            <div className="flex items center gap-2 justify-center mt-6 flex-wrap">
+              <p className="text-base font-medium text-muted-foreground">
                 Need admin access?
               </p>
               <Link
-                href='mailto:support@lumore.com'
-                className='text-sm font-medium text-primary hover:text-primaryemphasis'>
+                href="mailto:support@lumore.com"
+                className="text-sm font-medium text-primary hover:text-primaryemphasis"
+              >
                 Contact support
               </Link>
             </div>
@@ -90,5 +92,5 @@ export const Login = () => {
         </div>
       </div>
     </>
-  )
-}
+  );
+};

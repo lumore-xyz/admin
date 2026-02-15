@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -372,6 +372,13 @@ const DataTable = <T extends Record<string, unknown>>({
     initialState: { pagination: { pageSize: paginationOptions[0] || 5 } },
   })
 
+  useEffect(() => {
+    if (!showPagination) {
+      table.setPageSize(Math.max(1, data.length || 1))
+      table.setPageIndex(0)
+    }
+  }, [showPagination, data.length, table])
+
   // CSV Download
   const handleDownload = () => {
     if (!data.length) return
@@ -438,15 +445,15 @@ const DataTable = <T extends Record<string, unknown>>({
             </div>
 
             {/* Table */}
-            <div className='overflow-x-auto border rounded-md border-ld'>
+            <div className='h-[70vh] overflow-auto border rounded-md border-ld'>
               <Table>
-                <TableHeader>
+                <TableHeader className='sticky top-0 z-10 bg-background'>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id} className=''>
                       {headerGroup.headers.map((header) => (
                         <TableHead
                           key={header.id}
-                          className='cursor-pointer select-none min-w-42 px-0'>
+                          className='cursor-pointer select-none min-w-42 px-0 bg-background'>
                           {header.isPlaceholder ? null : (
                             <Button
                               className='flex items-center gap-1 px-4 bg-transparent hover:bg-transparent text-foreground font-semibold'

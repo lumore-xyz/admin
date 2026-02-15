@@ -53,7 +53,7 @@ const SidebarContent: MenuItem[] = [
         name: "Dashboard",
         icon: "solar:widget-2-linear",
         id: uniqueId(),
-        url: "/dashboard",
+        url: "/",
       },
       {
         name: "Users",

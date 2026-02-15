@@ -4,8 +4,15 @@ import DataTable from "@/app/components/utilities/data-table/DataTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getAdminUsers, updateUserArchive } from "@/lib/admin-api";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BreadcrumbComp from "../layout/shared/breadcrumb/BreadcrumbComp";
 
 type AdminUser = {
@@ -34,6 +41,8 @@ type AdminUser = {
 
 type Pagination = {
   page: number;
+  limit: number;
+  total: number;
   hasMore: boolean;
 };
 
@@ -48,6 +57,7 @@ export default function UsersPage() {
   const [rows, setRows] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [error, setError] = useState("");
@@ -58,13 +68,18 @@ export default function UsersPage() {
     try {
       const res = await getAdminUsers({
         page: requestedPage,
-        limit: 20,
+        limit,
         search,
       });
       setRows(res.data || []);
       setPagination(
         res.pagination
-          ? { page: res.pagination.page, hasMore: res.pagination.hasMore }
+          ? {
+              page: res.pagination.page,
+              limit: res.pagination.limit,
+              total: res.pagination.total,
+              hasMore: res.pagination.hasMore,
+            }
           : null,
       );
     } catch (err: unknown) {
@@ -77,7 +92,12 @@ export default function UsersPage() {
   useEffect(() => {
     load(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, limit]);
+
+  const totalPages = useMemo(() => {
+    if (!pagination?.total || !pagination?.limit) return 1;
+    return Math.max(1, Math.ceil(pagination.total / pagination.limit));
+  }, [pagination]);
 
   const onToggleArchive = async (userId: string, isArchived = false) => {
     try {
@@ -199,23 +219,46 @@ export default function UsersPage() {
             />
           )}
           <div className="mt-3 flex items-center justify-between">
-            <Button
-              variant="outline"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!pagination?.hasMore || page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
             <span className="text-sm text-muted-foreground">
-              Page {pagination?.page || page}
+              Page {pagination?.page || page} of {totalPages} (
+              {pagination?.total ?? rows.length} users)
             </span>
-            <Button
-              variant="outline"
-              disabled={!pagination?.hasMore}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Users per page</span>
+              <Select
+                value={String(limit)}
+                onValueChange={(value) => {
+                  const nextLimit = Number(value);
+                  setLimit(nextLimit);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue placeholder="Limit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
