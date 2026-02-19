@@ -12,6 +12,11 @@ type ApiResponse<T> = {
   }
 }
 
+export type AdminUserFilters = Record<
+  string,
+  string | number | boolean | string[] | number[] | boolean[] | undefined
+>
+
 type AdminUser = {
   _id: string
   username: string
@@ -138,6 +143,46 @@ type DashboardStats = {
   }
 }
 
+export type AdminOptionItem = {
+  label: string
+  value: string
+}
+
+export type AdminOptionsMap = Record<string, AdminOptionItem[]>
+
+type AdminOptionsResponse = {
+  key?: string
+  options: AdminOptionsMap
+  version?: string
+  updatedAt?: string
+  lastUpdatedBy?: string | null
+}
+
+export type AdminUserGroup = {
+  _id: string
+  name: string
+  description?: string
+  memberCount?: number
+  members?: Array<{
+    _id: string
+    username?: string
+    email?: string
+  }>
+  createdAt?: string
+  updatedAt?: string
+}
+
+type AdminCampaignPayload = {
+  channel: 'push' | 'email'
+  targetType: 'all' | 'users' | 'groups'
+  title?: string
+  emailSubject?: string
+  body: string
+  userIds?: string[]
+  usernames?: string[]
+  groupIds?: string[]
+}
+
 export const loginAdminWithGoogle = async (code: string) => {
   return apiRequest<ApiResponse<{ accessToken: string; user: AdminUser }> & {
     accessToken?: string
@@ -164,11 +209,19 @@ export const getAdminUsers = async (params: {
   page?: number
   limit?: number
   search?: string
+  filters?: AdminUserFilters
 }) => {
   const q = new URLSearchParams()
   if (params.page) q.set('page', String(params.page))
   if (params.limit) q.set('limit', String(params.limit))
   if (params.search) q.set('search', params.search)
+  if (params.filters) {
+    Object.entries(params.filters).forEach(([key, rawValue]) => {
+      if (rawValue === undefined || rawValue === null || rawValue === '') return
+      const value = Array.isArray(rawValue) ? rawValue.join(',') : String(rawValue)
+      q.set(key, value)
+    })
+  }
   return apiRequest<ApiResponse<AdminUser[]>>(`/admin/users?${q.toString()}`)
 }
 
@@ -241,5 +294,53 @@ export const updateReportedUserStatus = async (
     `/admin/reported-users/${reportId}/status`,
     'PATCH',
     { status }
+  )
+}
+
+export const getAdminOptions = async () => {
+  return apiRequest<ApiResponse<AdminOptionsResponse>>('/admin/options')
+}
+
+export const patchAdminOptions = async (options: AdminOptionsMap) => {
+  return apiRequest<ApiResponse<AdminOptionsResponse>>('/admin/options', 'PATCH', {
+    options,
+  })
+}
+
+export const getUserGroups = async () => {
+  return apiRequest<ApiResponse<AdminUserGroup[]>>('/admin/user-groups')
+}
+
+export const createUserGroup = async (payload: {
+  name: string
+  description?: string
+  userIds?: string[]
+  usernames?: string[]
+  filters?: AdminUserFilters
+}) => {
+  return apiRequest<ApiResponse<AdminUserGroup>>('/admin/user-groups', 'POST', payload)
+}
+
+export const updateUserGroupMembers = async (
+  groupId: string,
+  payload: {
+    action: 'add' | 'remove' | 'set'
+    userIds?: string[]
+    usernames?: string[]
+    filters?: AdminUserFilters
+  }
+) => {
+  return apiRequest<ApiResponse<AdminUserGroup>>(
+    `/admin/user-groups/${groupId}/members`,
+    'PATCH',
+    payload
+  )
+}
+
+export const sendAdminCampaign = async (payload: AdminCampaignPayload) => {
+  return apiRequest<ApiResponse<{ recipientCount?: number }>>(
+    '/admin/notifications/send',
+    'POST',
+    payload
   )
 }

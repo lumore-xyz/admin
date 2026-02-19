@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getAdminUsers, updateUserArchive } from "@/lib/admin-api";
+import type { AdminUserFilters } from "@/lib/admin-api";
 import { useEffect, useMemo, useState } from "react";
+import FilterQueryBuilder from "../engagement/groups/FilterQueryBuilder";
 import BreadcrumbComp from "../layout/shared/breadcrumb/BreadcrumbComp";
 
 type AdminUser = {
@@ -59,10 +61,14 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<AdminUserFilters>({});
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [error, setError] = useState("");
 
-  const load = async (requestedPage = page) => {
+  const load = async (
+    requestedPage = page,
+    requestedFilters: AdminUserFilters = filters,
+  ) => {
     setLoading(true);
     setError("");
     try {
@@ -70,6 +76,7 @@ export default function UsersPage() {
         page: requestedPage,
         limit,
         search,
+        filters: Object.keys(requestedFilters).length ? requestedFilters : undefined,
       });
       setRows(res.data || []);
       setPagination(
@@ -191,6 +198,35 @@ export default function UsersPage() {
             >
               Search
             </Button>
+          </div>
+          <div className="mb-3 space-y-2">
+            <FilterQueryBuilder filters={filters} onChange={setFilters} />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPage(1);
+                  load(1);
+                }}
+              >
+                Apply Filters
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const nextFilters = {};
+                  setFilters(nextFilters);
+                  setPage(1);
+                  void load(1, nextFilters);
+                }}
+                disabled={Object.keys(filters).length === 0}
+              >
+                Reset Filters
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Active filters: {Object.keys(filters).length}
+              </span>
+            </div>
           </div>
           {error ? <p className="text-sm text-error mb-2">{error}</p> : null}
           {loading ? (

@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react'
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  flexRender,
-  CellContext,
-} from '@tanstack/react-table'
-import { Badge } from '@/components/ui/badge'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -18,176 +18,178 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Icon } from '@iconify/react/dist/iconify.js'
+} from "@/components/ui/table";
+import { Icon } from "@iconify/react/dist/iconify.js";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import {
-  ArrowUp,
+  CellContext,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
   ArrowDown,
+  ArrowUp,
   ChevronsUpDown,
-  Trash2,
   Pencil,
-} from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import CardBox from '../../shared/CardBox'
+  Trash2,
+} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import CardBox from "../../shared/CardBox";
 
 const badgeColors = [
-  'bg-blue-100 text-blue-700',
-  'bg-green-100 text-green-700',
-  'bg-yellow-100 text-yellow-700',
-  'bg-purple-100 text-purple-700',
-  'bg-pink-100 text-pink-700',
-  'bg-indigo-100 text-indigo-700',
-  'bg-teal-100 text-teal-700',
-  'bg-orange-100 text-orange-700',
-]
+  "bg-blue-100 text-blue-700",
+  "bg-green-100 text-green-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-purple-100 text-purple-700",
+  "bg-pink-100 text-pink-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-teal-100 text-teal-700",
+  "bg-orange-100 text-orange-700",
+];
 
 export function getColorForValue(value: string) {
   const index =
     Math.abs(
-      value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    ) % badgeColors.length
-  return badgeColors[index]
+      value.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0),
+    ) % badgeColors.length;
+  return badgeColors[index];
 }
 
 export function toTitleCase(str: string) {
   return str
     .toLowerCase()
-    .split(' ')
+    .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+    .join(" ");
 }
 
 interface DynamicTableProps<T> {
-  data?: T[]
-  title?: string
-  searchPlaceholder?: string
-  downloadFileName?: string
-  renderActions?: (row: T) => React.ReactNode
-  showPagination?: boolean
+  data?: T[];
+  title?: string;
+  searchPlaceholder?: string;
+  downloadFileName?: string;
+  renderActions?: (row: T) => React.ReactNode;
+  showPagination?: boolean;
 }
 
 const DataTable = <T extends Record<string, unknown>>({
   data = [],
-  title = 'Employee Data Table',
-  searchPlaceholder = 'Search your relevant items...',
-  downloadFileName = 'table-data.csv',
+  title = "Employee Data Table",
+  searchPlaceholder = "Search your relevant items...",
+  downloadFileName = "table-data.csv",
   renderActions,
   showPagination = true,
 }: DynamicTableProps<T>) => {
-  const [globalFilter, setGlobalFilter] = useState('')
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const renderValue = (val: unknown): React.ReactNode => {
-    if (val === null || val === undefined) return '-';
-    if (typeof val === 'object') return JSON.stringify(val);
+    if (val === null || val === undefined) return "-";
+    if (typeof val === "object") return JSON.stringify(val);
     return String(val);
   };
 
   const paginationOptions = useMemo(() => {
-    const sizes = [5, 10, 20, 50]
-    return sizes.filter((size) => size <= data.length)
-  }, [data.length])
+    const sizes = [5, 10, 20, 50];
+    return sizes.filter((size) => size <= data.length);
+  }, [data.length]);
 
   const columns = useMemo<ColumnDef<T, unknown>[]>(() => {
-    if (!data.length) return []
+    if (!data.length) return [];
 
     const keys = Object.keys(data[0]).filter((key) => {
-      const val = data[0][key]
-      return !Array.isArray(val)
-    })
+      const val = data[0][key];
+      return !Array.isArray(val);
+    });
 
     const baseColumns = keys.map((col) => ({
       accessorKey: col as keyof T & string,
-      header: toTitleCase(col.replace(/([A-Z])/g, ' $1').trim()),
+      header: toTitleCase(col.replace(/([A-Z])/g, " $1").trim()),
       cell: (info: CellContext<T, unknown>) => {
-        const value = info.getValue()
+        const value = info.getValue();
 
         if (
           [
-            'status',
-            'availability',
-            'gender',
-            'category',
-            'genre',
-            'position',
+            "status",
+            "availability",
+            "gender",
+            "category",
+            "genre",
+            "position",
           ].some((key) => col.toLowerCase().includes(key))
         ) {
-          const cls = getColorForValue(String(value))
+          const cls = getColorForValue(String(value));
 
           return (
             <Badge
-              className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cls}`}>
+              className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cls}`}
+            >
               {renderValue(value)}
             </Badge>
-          )
+          );
         }
 
-        if (col.toLowerCase().includes('rating')) {
-          const ratingValue = Number(value) || 0
-          const maxRating = 5
-          const fullStars = Math.floor(ratingValue)
-          const halfStar = ratingValue % 1 >= 0.5
-          const emptyStars = maxRating - fullStars - (halfStar ? 1 : 0)
+        if (col.toLowerCase().includes("rating")) {
+          const ratingValue = Number(value) || 0;
+          const maxRating = 5;
+          const fullStars = Math.floor(ratingValue);
+          const halfStar = ratingValue % 1 >= 0.5;
+          const emptyStars = maxRating - fullStars - (halfStar ? 1 : 0);
 
           return (
-            <div className='flex items-center gap-0.5'>
+            <div className="flex items-center gap-0.5">
               {[...Array(fullStars)].map((_, i) => (
                 <Icon
                   key={`full-${i}`}
-                  icon='mdi:star'
-                  className='text-[#f3d55b] w-6 h-6 shrink-0'
+                  icon="mdi:star"
+                  className="text-[#f3d55b] w-6 h-6 shrink-0"
                 />
               ))}
               {halfStar && (
                 <Icon
-                  icon='mdi:star-half-full'
-                  className='text-[#f3d55b] w-6 h-6 shrink-0'
+                  icon="mdi:star-half-full"
+                  className="text-[#f3d55b] w-6 h-6 shrink-0"
                 />
               )}
               {[...Array(emptyStars)].map((_, i) => (
                 <Icon
                   key={`empty-${i}`}
-                  icon='mdi:star-outline'
-                  className='text-[#f3d55b] w-6 h-6 shrink-0'
+                  icon="mdi:star-outline"
+                  className="text-[#f3d55b] w-6 h-6 shrink-0"
                 />
               ))}
             </div>
-          )
+          );
         }
 
-        if (typeof value === 'boolean') {
+        if (typeof value === "boolean") {
           return (
             <Badge
               className={`px-2 py-1 rounded-full text-xs font-semibold ${
                 value
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-slate-100 text-slate-700'
-              }`}>
-              {value ? 'Yes' : 'No'}
+                  ? "bg-green-100 text-green-700"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {value ? "Yes" : "No"}
             </Badge>
-          )
+          );
         }
 
-        if (col.toLowerCase().includes('id')) {
+        if (col.toLowerCase().includes("id")) {
           return (
-            <span className='text-gray-900 dark:text-white font-medium max-w-50 truncate whitespace-nowrap'>
+            <span className="text-gray-900 dark:text-white font-medium max-w-50 truncate whitespace-nowrap">
               {renderValue(value)}
             </span>
-          )
+          );
         }
 
-        if (typeof value === 'object' && value !== null) {
-          const typedValue = value as Record<string, unknown>
+        if (typeof value === "object" && value !== null) {
+          const typedValue = value as Record<string, unknown>;
           const {
             image,
             imageUrl,
@@ -199,11 +201,11 @@ const DataTable = <T extends Record<string, unknown>>({
             profileImage,
             icon,
             ...rest
-          } = typedValue
-          const keys = Object.keys(rest)
+          } = typedValue;
+          const keys = Object.keys(rest);
 
           return (
-            <div className='flex items-center gap-2'>
+            <div className="flex items-center gap-2">
               {image ||
               imageUrl ||
               thumbnailUrl ||
@@ -227,135 +229,143 @@ const DataTable = <T extends Record<string, unknown>>({
                   }
                   width={36}
                   height={36}
-                  className='rounded-full'
+                  className="rounded-full aspect-square object-cover shrink-0"
                 />
               ) : (
-                <Badge className='size-10 flex items-center justify-center rounded-full shrink-0'>
+                <Badge className="size-10 flex items-center justify-center rounded-full shrink-0">
                   {keys[0]
-                    ? String(rest[keys[0]])[0]?.toUpperCase() ?? '?'
-                    : '?'}
+                    ? (String(rest[keys[0]])[0]?.toUpperCase() ?? "?")
+                    : "?"}
                 </Badge>
               )}
-              <div className='flex flex-col'>
+              <div className="flex flex-col">
                 {keys.map((k) => {
-                  const val = rest[k]
-                  let displayValue
+                  const val = rest[k];
+                  let displayValue;
 
                   const isTimestamp = (v: unknown) => {
-                    if (typeof v !== 'string') return false
-                    return /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(v)
-                  }
-                  if (isTimestamp(val)) return null
+                    if (typeof v !== "string") return false;
+                    return /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(v);
+                  };
+                  if (isTimestamp(val)) return null;
 
-                  if (typeof val === 'object' && val !== null) {
+                  if (typeof val === "object" && val !== null) {
                     if (
-                      typeof val === 'object' &&
+                      typeof val === "object" &&
                       val !== null &&
-                      'lat' in val &&
-                      'lng' in val
+                      "lat" in val &&
+                      "lng" in val
                     ) {
-                      const geo = val as { lat: unknown; lng: unknown }
-                      displayValue = `${String(geo.lat)}, ${String(geo.lng)}`
+                      const geo = val as { lat: unknown; lng: unknown };
+                      displayValue = `${String(geo.lat)}, ${String(geo.lng)}`;
                     } else {
-                      displayValue = JSON.stringify(val)
+                      displayValue = JSON.stringify(val);
                     }
                   } else {
                     displayValue =
-                      val !== null && val !== undefined ? String(val) : '-'
+                      val !== null && val !== undefined ? String(val) : "-";
                   }
 
                   return (
                     <span
                       key={k}
                       className={
-                        k === 'name'
-                          ? 'text-gray-900 dark:text-white font-semibold max-w-50 truncate whitespace-nowrap pe-6'
-                          : 'text-sm text-gray-500 dark:text-gray-400 max-w-50 truncate whitespace-nowrap pe-6'
-                      }>
+                        k === "name"
+                          ? "text-gray-900 dark:text-white font-semibold max-w-50 truncate whitespace-nowrap pe-6"
+                          : "text-sm text-gray-500 dark:text-gray-400 max-w-50 truncate whitespace-nowrap pe-6"
+                      }
+                    >
                       {renderValue(displayValue)}
                     </span>
-                  )
+                  );
                 })}
               </div>
             </div>
-          )
+          );
         }
 
-        if (typeof value === 'string') {
+        if (typeof value === "string") {
           if (
-            value?.includes('png') ||
-            value?.includes('jpg') ||
-            value?.includes('jpeg') ||
-            value?.includes('svg') ||
-            col.toLowerCase().includes('thumbnail') ||
-            col.toLowerCase().includes('image') ||
-            col.toLowerCase().includes('picture') ||
-            col.toLowerCase().includes('avatar') ||
-            col.toLowerCase().includes('profile')
+            value?.includes("png") ||
+            value?.includes("jpg") ||
+            value?.includes("jpeg") ||
+            value?.includes("svg") ||
+            col.toLowerCase().includes("thumbnail") ||
+            col.toLowerCase().includes("image") ||
+            col.toLowerCase().includes("picture") ||
+            col.toLowerCase().includes("avatar") ||
+            col.toLowerCase().includes("profile")
           ) {
-            return <img src={value} className='size-10 rounded-md' />
+            return <img src={value} className="size-10 rounded-md" />;
           }
         }
 
         if (
-          ['user', 'product', 'fullname', 'name', 'author'].some((key) =>
-            col.toLowerCase().includes(key)
+          ["user", "product", "fullname", "name", "author"].some((key) =>
+            col.toLowerCase().includes(key),
           )
         ) {
-          const cls = getColorForValue(String(value))
+          const cls = getColorForValue(String(value));
           return (
-            <div className='flex items-center gap-2'>
+            <div className="flex items-center gap-2">
               <Badge
-                className={`size-10 flex items-center justify-center rounded-full shrink-0 ${cls}`}>
-                {value ? String(value)[0]?.toUpperCase() : '?'}
+                className={`size-10 flex items-center justify-center rounded-full shrink-0 ${cls}`}
+              >
+                {value ? String(value)[0]?.toUpperCase() : "?"}
               </Badge>
-              <span className='text-gray-900 dark:text-white font-semibold max-w-50 truncate whitespace-nowrap'>
+              <span className="text-gray-900 dark:text-white font-semibold max-w-50 truncate whitespace-nowrap">
                 {renderValue(value)}
               </span>
             </div>
-          )
+          );
         }
 
         return (
-          <span className='text-gray-900 dark:text-white font-medium max-w-50 truncate block '>
+          <span className="text-gray-900 dark:text-white font-medium max-w-50 truncate block ">
             {renderValue(value)}
           </span>
-        )
+        );
       },
       enableSorting: true,
       enableGlobalFilter: true,
-    }))
+    }));
 
     const actionColumn: ColumnDef<T, unknown> = {
-      id: 'action',
-      header: 'Action',
+      id: "action",
+      header: "Action",
       enableSorting: false,
       enableGlobalFilter: false,
       cell: ({ row }) => {
         if (renderActions) {
-          return <div className='flex items-center gap-2'>{renderActions(row.original)}</div>
+          return (
+            <div className="flex items-center gap-2">
+              {renderActions(row.original)}
+            </div>
+          );
         }
         return (
-          <div className='flex items-center gap-2'>
+          <div className="flex items-center gap-2">
             <Button
-              size={'sm'}
-              variant={'lightprimary'}
-              className='size-8! rounded-full'>
-              <Pencil className='size-5' />
+              size={"sm"}
+              variant={"lightprimary"}
+              className="size-8! rounded-full"
+            >
+              <Pencil className="size-5" />
             </Button>
             <Button
-              size={'sm'}
-              variant={'lighterror'}
-              className='size-8! rounded-full'>
-              <Trash2 className='size-5' />
+              size={"sm"}
+              variant={"lighterror"}
+              className="size-8! rounded-full"
+            >
+              <Trash2 className="size-5" />
             </Button>
           </div>
-        )
+        );
       },
-    }
+    };
 
-    return [...baseColumns, actionColumn]
-  }, [data, renderActions])
+    return [...baseColumns, actionColumn];
+  }, [data, renderActions]);
 
   // React Table Setup
   const table = useReactTable({
@@ -364,79 +374,78 @@ const DataTable = <T extends Record<string, unknown>>({
     state: { globalFilter, sorting },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
-    globalFilterFn: 'includesString',
+    globalFilterFn: "includesString",
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: paginationOptions[0] || 5 } },
-  })
+  });
 
   useEffect(() => {
     if (!showPagination) {
-      table.setPageSize(Math.max(1, data.length || 1))
-      table.setPageIndex(0)
+      table.setPageSize(Math.max(1, data.length || 1));
+      table.setPageIndex(0);
     }
-  }, [showPagination, data.length, table])
+  }, [showPagination, data.length, table]);
 
   // CSV Download
   const handleDownload = () => {
-    if (!data.length) return
+    if (!data.length) return;
 
     const exportableColumns = columns.filter((col) => {
-      const typedCol = col as { accessorKey?: string }
-      return !!typedCol.accessorKey
-    })
-    const headers = exportableColumns.map((col) => String(col.header))
+      const typedCol = col as { accessorKey?: string };
+      return !!typedCol.accessorKey;
+    });
+    const headers = exportableColumns.map((col) => String(col.header));
     const rows = data.map((item) =>
       exportableColumns.map((col) => {
-        const column = col as unknown as { accessorKey?: string }
-        const accessorKey = column.accessorKey
-        const value = accessorKey ? item[accessorKey] : ''
-        if (Array.isArray(value)) return `"[array]"`
-        return `"${String(value ?? '').replace(/"/g, '""')}"`
-      })
-    )
+        const column = col as unknown as { accessorKey?: string };
+        const accessorKey = column.accessorKey;
+        const value = accessorKey ? item[accessorKey] : "";
+        if (Array.isArray(value)) return `"[array]"`;
+        return `"${String(value ?? "").replace(/"/g, '""')}"`;
+      }),
+    );
 
     const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.join(',')),
-    ].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', downloadFileName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", downloadFileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <CardBox>
       <div>
         {data?.length === 0 ? (
-          <p className='text-center py-8 text-gray-500'>No data available.</p>
+          <p className="text-center py-8 text-gray-500">No data available.</p>
         ) : (
           <>
             {/* Search + Download */}
-            <div className='pb-4 pt-0 flex items-center justify-between flex-wrap gap-4'>
-              <h3 className='text-xl font-semibold mb-2'>
-                {title}
-              </h3>
-              <div className='flex items-center gap-2 flex-wrap'>
+            <div className="pb-4 pt-0 flex items-center justify-between flex-wrap gap-4">
+              <h3 className="text-xl font-semibold mb-2">{title}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
                 <Input
-                  type='text'
-                  className='max-w-96 lg:min-w-96 min-w-full placeholder:text-gray-400 dark:placeholder:text-white/20'
-                  value={globalFilter ?? ''}
+                  type="text"
+                  className="max-w-96 lg:min-w-96 min-w-full placeholder:text-gray-400 dark:placeholder:text-white/20"
+                  value={globalFilter ?? ""}
                   onChange={(e) => setGlobalFilter(e.target.value)}
                   placeholder={searchPlaceholder}
                 />
                 <Button
                   onClick={handleDownload}
-                  className='p-2 px-4 rounded-md '>
+                  className="p-2 px-4 rounded-md "
+                >
                   <Icon
-                    icon='material-symbols:download-rounded'
+                    icon="material-symbols:download-rounded"
                     width={24}
                     height={24}
                   />
@@ -445,29 +454,31 @@ const DataTable = <T extends Record<string, unknown>>({
             </div>
 
             {/* Table */}
-            <div className='h-[70vh] overflow-auto border rounded-md border-ld'>
+            <div className="h-[70vh] overflow-auto border rounded-md border-ld">
               <Table>
-                <TableHeader className='sticky top-0 z-10 bg-background'>
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className=''>
+                    <TableRow key={headerGroup.id} className="">
                       {headerGroup.headers.map((header) => (
                         <TableHead
                           key={header.id}
-                          className='cursor-pointer select-none min-w-42 px-0 bg-background'>
+                          className="cursor-pointer select-none min-w-42 px-0 bg-background"
+                        >
                           {header.isPlaceholder ? null : (
                             <Button
-                              className='flex items-center gap-1 px-4 bg-transparent hover:bg-transparent text-foreground font-semibold'
-                              onClick={header.column.getToggleSortingHandler()}>
+                              className="flex items-center gap-1 px-4 bg-transparent hover:bg-transparent text-foreground font-semibold"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
                               {flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                               {{
-                                asc: <ArrowUp className='w-4 h-4 inline' />,
-                                desc: <ArrowDown className='w-4 h-4 inline' />,
+                                asc: <ArrowUp className="w-4 h-4 inline" />,
+                                desc: <ArrowDown className="w-4 h-4 inline" />,
                               }[header.column.getIsSorted() as string] ??
-                                (header.column.id !== 'action' ? (
-                                  <ChevronsUpDown className='w-2 h-2 inline' />
+                                (header.column.id !== "action" ? (
+                                  <ChevronsUpDown className="w-2 h-2 inline" />
                                 ) : null)}
                             </Button>
                           )}
@@ -482,14 +493,16 @@ const DataTable = <T extends Record<string, unknown>>({
                     table.getRowModel().rows.map((row) => (
                       <TableRow
                         key={row.id}
-                        className='hover:bg-primary/10 transition-colors'>
+                        className="hover:bg-primary/10 transition-colors"
+                      >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
                             key={cell.id}
-                            className='text-gray-700 dark:text-white/70'>
+                            className="text-gray-700 dark:text-white/70"
+                          >
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}
@@ -499,7 +512,8 @@ const DataTable = <T extends Record<string, unknown>>({
                     <TableRow>
                       <TableCell
                         colSpan={columns.length}
-                        className='text-center p-6 text-gray-500 dark:text-white/70 font-medium'>
+                        className="text-center p-6 text-gray-500 dark:text-white/70 font-medium"
+                      >
                         No results found.
                       </TableCell>
                     </TableRow>
@@ -509,37 +523,41 @@ const DataTable = <T extends Record<string, unknown>>({
             </div>
 
             {showPagination ? (
-              <div className='flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border dark:border-white/10'>
-                <div className='flex gap-2'>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border dark:border-white/10">
+                <div className="flex gap-2">
                   <Button
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
-                    variant={'secondary'}>
+                    variant={"secondary"}
+                  >
                     Previous
                   </Button>
                   <Button
                     onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}>
+                    disabled={!table.getCanNextPage()}
+                  >
                     Next
                   </Button>
                 </div>
 
-                <div className='text-forest-black dark:text-white/90 font-medium text-base'>
-                  Page {table.getState().pagination.pageIndex + 1} of{' '}
+                <div className="text-forest-black dark:text-white/90 font-medium text-base">
+                  Page {table.getState().pagination.pageIndex + 1} of{" "}
                   {table.getPageCount()}
                 </div>
 
-                <div className='flex items-center gap-2'>
+                <div className="flex items-center gap-2">
                   <Label
-                    htmlFor='pageSize'
-                    className='mr-0 text-forest-black dark:text-white/90 text-base font-medium whitespace-nowrap min-w-32'>
+                    htmlFor="pageSize"
+                    className="mr-0 text-forest-black dark:text-white/90 text-base font-medium whitespace-nowrap min-w-32"
+                  >
                     Rows per page:
                   </Label>
                   <Select
                     value={String(table.getState().pagination.pageSize)}
-                    onValueChange={(value) => table.setPageSize(Number(value))}>
-                    <SelectTrigger className='w-18! cursor-pointer'>
-                      <SelectValue placeholder='Page size' />
+                    onValueChange={(value) => table.setPageSize(Number(value))}
+                  >
+                    <SelectTrigger className="w-18! cursor-pointer">
+                      <SelectValue placeholder="Page size" />
                     </SelectTrigger>
                     <SelectContent>
                       {paginationOptions.map((size) => (
@@ -556,7 +574,7 @@ const DataTable = <T extends Record<string, unknown>>({
         )}
       </div>
     </CardBox>
-  )
-}
+  );
+};
 
-export default DataTable
+export default DataTable;

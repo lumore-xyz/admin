@@ -87,6 +87,34 @@ const SidebarContent: MenuItem[] = [
       },
     ],
   },
+  {
+    heading: "Operation",
+    children: [
+      {
+        name: "App Options",
+        icon: "solar:settings-linear",
+        id: uniqueId(),
+        url: "/options",
+      },
+    ],
+  },
+  {
+    heading: "Engagement",
+    children: [
+      {
+        name: "Send Campaign",
+        icon: "solar:chat-round-dots-linear",
+        id: uniqueId(),
+        url: "/engagement/notifications",
+      },
+      {
+        name: "User Groups",
+        icon: "solar:users-group-two-rounded-linear",
+        id: uniqueId(),
+        url: "/engagement/groups",
+      },
+    ],
+  },
 ];
 
 export default SidebarContent;
