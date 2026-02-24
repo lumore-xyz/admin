@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getUserGroups, sendAdminCampaign } from "@/lib/admin-api";
+import Link from "next/link";
+import {
+  getAdminCampaignConfig,
+  getUserGroups,
+  sendAdminCampaign,
+} from "@/lib/admin-api";
 import { useEffect, useMemo, useState } from "react";
 import BreadcrumbComp from "../../layout/shared/breadcrumb/BreadcrumbComp";
 
@@ -16,6 +21,7 @@ type GroupOption = {
 };
 
 const BCrumb = [{ to: "/", title: "home" }, { title: "engagement notifications" }];
+const PLACEHOLDER_HELP = "{nickname}, {realname}, {age}, {username}, {email}";
 
 const parseCsv = (input: string) =>
   Array.from(
@@ -29,7 +35,15 @@ const parseCsv = (input: string) =>
 
 export default function AdminNotificationsPage() {
   const [channel, setChannel] = useState<"push" | "email">("push");
+  const [emailCampaignType, setEmailCampaignType] = useState<"campaign" | "personalized">(
+    "personalized",
+  );
   const [targetType, setTargetType] = useState<"all" | "users" | "groups">("all");
+  const [fromEmail, setFromEmail] = useState("");
+  const [fromEmailOptions, setFromEmailOptions] = useState<string[]>([]);
+  const [fromName, setFromName] = useState("");
+  const [replyToEmail, setReplyToEmail] = useState("");
+  const [replyToName, setReplyToName] = useState("");
   const [title, setTitle] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [body, setBody] = useState("");
@@ -45,14 +59,23 @@ export default function AdminNotificationsPage() {
     const loadGroups = async () => {
       setLoadingGroups(true);
       try {
-        const response = await getUserGroups();
-        setGroups((response?.data || []).map((group) => ({
+        const [groupsResponse, campaignConfigResponse] = await Promise.all([
+          getUserGroups(),
+          getAdminCampaignConfig(),
+        ]);
+        setGroups((groupsResponse?.data || []).map((group) => ({
           _id: group._id,
           name: group.name,
           memberCount: group.memberCount || 0,
         })));
+        const options = campaignConfigResponse?.data?.fromEmails || [];
+        setFromEmailOptions(options);
+        if (options.length > 0) {
+          setFromEmail(options[0]);
+        }
       } catch {
         setGroups([]);
+        setFromEmailOptions([]);
       } finally {
         setLoadingGroups(false);
       }
@@ -93,6 +116,11 @@ export default function AdminNotificationsPage() {
       const response = await sendAdminCampaign({
         channel,
         targetType,
+        emailCampaignType: channel === "email" ? emailCampaignType : undefined,
+        fromEmail: channel === "email" ? fromEmail.trim() || undefined : undefined,
+        fromName: channel === "email" ? fromName.trim() || undefined : undefined,
+        replyToEmail: channel === "email" ? replyToEmail.trim() || undefined : undefined,
+        replyToName: channel === "email" ? replyToName.trim() || undefined : undefined,
         title: title.trim() || undefined,
         emailSubject: emailSubject.trim() || undefined,
         body: body.trim(),
@@ -129,7 +157,7 @@ export default function AdminNotificationsPage() {
                 className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
               >
                 <option value="push">Push Notification</option>
-                <option value="email">Email (OneSignal)</option>
+                <option value="email">Email (Nodemailer)</option>
               </select>
             </div>
             <div>
@@ -155,16 +183,100 @@ export default function AdminNotificationsPage() {
               onChange={(event) => setTitle(event.target.value)}
               placeholder={channel === "push" ? "Notification title" : "Email subject fallback"}
             />
+            {channel !== "email" || emailCampaignType === "personalized" ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Supports placeholders: {PLACEHOLDER_HELP}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shared campaign mode sends one same subject to all selected emails.
+              </p>
+            )}
           </div>
 
           {channel === "email" ? (
-            <div>
+            <div className="space-y-3">
+              <div>
+                <Label>Email Campaign Type</Label>
+                <select
+                  value={emailCampaignType}
+                  onChange={(event) =>
+                    setEmailCampaignType(event.target.value as "campaign" | "personalized")
+                  }
+                  className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
+                >
+                  <option value="campaign">Email Campaign (same for everyone)</option>
+                  <option value="personalized">Personalized Email Campaign</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>From Email</Label>
+                  <select
+                    value={fromEmail}
+                    onChange={(event) => setFromEmail(event.target.value)}
+                    className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
+                  >
+                    {fromEmailOptions.length === 0 ? (
+                      <option value="">Default sender (env)</option>
+                    ) : null}
+                    {fromEmailOptions.map((email) => (
+                      <option key={email} value={email}>
+                        {email}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-1">
+                    <Link
+                      href="/engagement/from-emails"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Manage from emails
+                    </Link>
+                  </div>
+                </div>
+                <div>
+                  <Label>From Name (Optional)</Label>
+                  <Input
+                    value={fromName}
+                    onChange={(event) => setFromName(event.target.value)}
+                    placeholder="Lumore Team"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Reply-To Email (Optional)</Label>
+                  <Input
+                    value={replyToEmail}
+                    onChange={(event) => setReplyToEmail(event.target.value)}
+                    placeholder="support@yourdomain.com"
+                  />
+                </div>
+                <div>
+                  <Label>Reply-To Name (Optional)</Label>
+                  <Input
+                    value={replyToName}
+                    onChange={(event) => setReplyToName(event.target.value)}
+                    placeholder="Support Team"
+                  />
+                </div>
+              </div>
               <Label>Email Subject (Optional)</Label>
               <Input
                 value={emailSubject}
                 onChange={(event) => setEmailSubject(event.target.value)}
                 placeholder="Custom email subject"
               />
+              {emailCampaignType === "personalized" ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Supports placeholders: {PLACEHOLDER_HELP}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Shared campaign mode sends one same subject to all selected emails.
+                </p>
+              )}
             </div>
           ) : null}
 
@@ -176,6 +288,15 @@ export default function AdminNotificationsPage() {
               onChange={(event) => setBody(event.target.value)}
               placeholder="Write notification/email message..."
             />
+            {channel !== "email" || emailCampaignType === "personalized" ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Supports placeholders: {PLACEHOLDER_HELP}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shared campaign mode sends one same message to all selected emails.
+              </p>
+            )}
           </div>
 
           {targetType === "users" ? (

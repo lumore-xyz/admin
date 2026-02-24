@@ -175,6 +175,11 @@ export type AdminUserGroup = {
 type AdminCampaignPayload = {
   channel: 'push' | 'email'
   targetType: 'all' | 'users' | 'groups'
+  emailCampaignType?: 'campaign' | 'personalized'
+  fromEmail?: string
+  fromName?: string
+  replyToEmail?: string
+  replyToName?: string
   title?: string
   emailSubject?: string
   body: string
@@ -343,4 +348,8 @@ export const sendAdminCampaign = async (payload: AdminCampaignPayload) => {
     'POST',
     payload
   )
+}
+
+export const getAdminCampaignConfig = async () => {
+  return apiRequest<ApiResponse<{ fromEmails?: string[] }>>('/admin/notifications/config')
 }

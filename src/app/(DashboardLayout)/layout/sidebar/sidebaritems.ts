@@ -113,6 +113,12 @@ const SidebarContent: MenuItem[] = [
         id: uniqueId(),
         url: "/engagement/groups",
       },
+      {
+        name: "From Emails",
+        icon: "solar:letter-linear",
+        id: uniqueId(),
+        url: "/engagement/from-emails",
+      },
     ],
   },
 ];
