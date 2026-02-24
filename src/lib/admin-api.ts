@@ -183,6 +183,8 @@ type AdminCampaignPayload = {
   title?: string
   emailSubject?: string
   body: string
+  emailBodyHtml?: string
+  emailBodyText?: string
   userIds?: string[]
   usernames?: string[]
   groupIds?: string[]

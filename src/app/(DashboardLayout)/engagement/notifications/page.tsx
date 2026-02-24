@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import HtmlEditor from "@/components/email/HtmlEditor";
 import Link from "next/link";
 import {
   getAdminCampaignConfig,
@@ -47,6 +48,8 @@ export default function AdminNotificationsPage() {
   const [title, setTitle] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [body, setBody] = useState("");
+  const [emailBodyHtml, setEmailBodyHtml] = useState("");
+  const [emailBodyText, setEmailBodyText] = useState("");
   const [userIdsOrNames, setUserIdsOrNames] = useState("");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
@@ -90,12 +93,21 @@ export default function AdminNotificationsPage() {
     setError("");
     setSuccess("");
 
-    if (!body.trim()) {
+    if (channel === "push" && !title.trim()) {
+      setError("Push title is required.");
+      return;
+    }
+    if (channel === "push" && !body.trim()) {
       setError("Message body is required.");
       return;
     }
-    if (channel === "push" && !title.trim()) {
-      setError("Push title is required.");
+    if (
+      channel === "email" &&
+      !emailBodyHtml.trim() &&
+      !emailBodyText.trim() &&
+      !body.trim()
+    ) {
+      setError("Email body is required.");
       return;
     }
     if (targetType === "users" && parsedUsers.length === 0) {
@@ -123,7 +135,12 @@ export default function AdminNotificationsPage() {
         replyToName: channel === "email" ? replyToName.trim() || undefined : undefined,
         title: title.trim() || undefined,
         emailSubject: emailSubject.trim() || undefined,
-        body: body.trim(),
+        body:
+          channel === "email"
+            ? emailBodyText.trim() || body.trim()
+            : body.trim(),
+        emailBodyHtml: channel === "email" ? emailBodyHtml : undefined,
+        emailBodyText: channel === "email" ? emailBodyText : undefined,
         userIds,
         usernames,
         groupIds: selectedGroupIds,
@@ -280,24 +297,48 @@ export default function AdminNotificationsPage() {
             </div>
           ) : null}
 
-          <div>
-            <Label>Message</Label>
-            <Textarea
-              rows={6}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              placeholder="Write notification/email message..."
-            />
-            {channel !== "email" || emailCampaignType === "personalized" ? (
+          {channel === "email" ? (
+            <div>
+              <Label>Email Message</Label>
+              <HtmlEditor
+                value={emailBodyHtml}
+                placeholder="Write email message..."
+                variableTokens={[
+                  "{nickname}",
+                  "{realname}",
+                  "{age}",
+                  "{username}",
+                  "{email}",
+                ]}
+                onChange={(nextHtml, nextText) => {
+                  setEmailBodyHtml(nextHtml);
+                  setEmailBodyText(nextText);
+                }}
+              />
+              {emailCampaignType === "personalized" ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Supports placeholders: {PLACEHOLDER_HELP}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Shared campaign mode sends one same message to all selected emails.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <Label>Message</Label>
+              <Textarea
+                rows={6}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="Write notification message..."
+              />
               <p className="mt-1 text-xs text-muted-foreground">
                 Supports placeholders: {PLACEHOLDER_HELP}
               </p>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Shared campaign mode sends one same message to all selected emails.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {targetType === "users" ? (
             <div>
