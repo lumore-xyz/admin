@@ -149,10 +149,32 @@ export type AdminOptionItem = {
 }
 
 export type AdminOptionsMap = Record<string, AdminOptionItem[]>
+export type AdminMobileConfig = {
+  BASE_URL: string
+  SOCKET_URL: string
+  GOOGLE_WEB_CLIENT_ID: string
+  IOS_URL_SCHEMA: string
+  ONESIGNAL_APP_ID: string
+  ADMOB_ANDROID_INTERSTITIAL_ID: string
+  ADMOB_IOS_INTERSTITIAL_ID: string
+  ADMOB_ANDROID_REWARDED_UNIT_ID: string
+  ADMOB_IOS_REWARDED_UNIT_ID: string
+  PLAYSTORE_URL: string
+  APPSTORE_URL: string
+}
 
 type AdminOptionsResponse = {
   key?: string
   options: AdminOptionsMap
+  version?: string
+  updatedAt?: string
+  lastUpdatedBy?: string | null
+}
+
+type AdminMobileConfigResponse = {
+  key?: string
+  environment?: string
+  config: AdminMobileConfig
   version?: string
   updatedAt?: string
   lastUpdatedBy?: string | null
@@ -312,6 +334,24 @@ export const patchAdminOptions = async (options: AdminOptionsMap) => {
   return apiRequest<ApiResponse<AdminOptionsResponse>>('/admin/options', 'PATCH', {
     options,
   })
+}
+
+const MOBILE_CONFIG_ENVIRONMENT = 'production'
+
+export const getAdminMobileConfig = async () => {
+  return apiRequest<ApiResponse<AdminMobileConfigResponse>>(
+    `/admin/mobile-config?environment=${MOBILE_CONFIG_ENVIRONMENT}`
+  )
+}
+
+export const patchAdminMobileConfig = async (
+  configPatch: Partial<AdminMobileConfig>
+) => {
+  return apiRequest<ApiResponse<AdminMobileConfigResponse>>(
+    `/admin/mobile-config?environment=${MOBILE_CONFIG_ENVIRONMENT}`,
+    'PATCH',
+    configPatch
+  )
 }
 
 export const getUserGroups = async () => {

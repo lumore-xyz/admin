@@ -91,6 +91,12 @@ const SidebarContent: MenuItem[] = [
     heading: "Operation",
     children: [
       {
+        name: "App Config",
+        icon: "solar:tuning-2-linear",
+        id: uniqueId(),
+        url: "/app-config",
+      },
+      {
         name: "App Options",
         icon: "solar:settings-linear",
         id: uniqueId(),
