@@ -1,6 +1,6 @@
 "use client";
 
-import { getAdminSession } from "@/lib/admin-auth";
+import { bootstrapAdminSession } from "@/lib/admin-auth";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Header from "./layout/header/Header";
@@ -16,13 +16,26 @@ export default function Layout({
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const session = getAdminSession();
-    const isAdmin = !!session?.accessToken && !!session?.user?.isAdmin;
-    if (!isAdmin) {
-      router.replace("/auth/login");
-      return;
-    }
-    setAuthorized(true);
+    let cancelled = false;
+
+    const checkSession = async () => {
+      const isAdmin = await bootstrapAdminSession();
+      if (cancelled) return;
+
+      if (!isAdmin) {
+        setAuthorized(false);
+        router.replace("/auth/login");
+        return;
+      }
+
+      setAuthorized(true);
+    };
+
+    checkSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router]);
 
   if (!authorized) return null;

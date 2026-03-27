@@ -3,7 +3,7 @@
 import FullLogo from "@/app/(DashboardLayout)/layout/shared/logo/FullLogo";
 import { Button } from "@/components/ui/button";
 import { loginAdminWithGoogle } from "@/lib/admin-api";
-import { getAdminSession, setAdminSession } from "@/lib/admin-auth";
+import { bootstrapAdminSession, setAdminSession } from "@/lib/admin-auth";
 import { useGoogleLogin } from "@react-oauth/google";
 import { Chrome } from "lucide-react";
 import Link from "next/link";
@@ -17,10 +17,20 @@ export const Login = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const session = getAdminSession();
-    if (session?.accessToken && session?.user?.isAdmin) {
-      router.replace("/");
-    }
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      const isAuthenticated = await bootstrapAdminSession();
+      if (!cancelled && isAuthenticated) {
+        router.replace("/");
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const googleLogin = useGoogleLogin({
@@ -32,12 +42,14 @@ export const Login = () => {
         const res = await loginAdminWithGoogle(tokenResponse.code);
         const user = res?.data?.user || res?.user;
         const accessToken = res?.data?.accessToken || res?.accessToken;
-        if (!user?.isAdmin || !accessToken) {
+        const refreshToken = res?.data?.refreshToken || res?.refreshToken;
+        if (!user?.isAdmin || !accessToken || !refreshToken) {
           setError("Admin access denied.");
           return;
         }
         setAdminSession({
           accessToken,
+          refreshToken,
           user,
         });
         router.replace("/");

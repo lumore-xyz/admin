@@ -1,4 +1,8 @@
-import { getAdminSession } from './admin-auth'
+import {
+  clearAdminSession,
+  getAdminSession,
+  refreshAdminAccessToken,
+} from './admin-auth'
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
@@ -18,20 +22,34 @@ export const apiRequest = async <T>(
   method: ApiMethod = 'GET',
   body?: unknown
 ): Promise<T> => {
-  const session = getAdminSession()
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
+  const sendRequest = async (accessToken?: string) =>
+    fetch(`${baseURL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    })
 
-  if (session?.accessToken) {
-    headers.Authorization = `Bearer ${session.accessToken}`
-  }
+  let session = getAdminSession()
+  let res = await sendRequest(session?.accessToken)
 
-  const res = await fetch(`${baseURL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  if (res.status === 401 && path !== '/auth/refresh-token') {
+    if (session?.refreshToken) {
+      const nextAccessToken = await refreshAdminAccessToken()
+
+      if (nextAccessToken) {
+        res = await sendRequest(nextAccessToken)
+      } else if (typeof window !== 'undefined') {
+        clearAdminSession()
+        window.location.replace('/auth/login')
+      }
+    } else if (typeof window !== 'undefined') {
+      clearAdminSession()
+      window.location.replace('/auth/login')
+    }
+  }
 
   const payload = await res.json().catch(() => null)
   if (!res.ok) {

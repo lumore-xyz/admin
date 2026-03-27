@@ -213,10 +213,13 @@ type AdminCampaignPayload = {
 }
 
 export const loginAdminWithGoogle = async (code: string) => {
-  return apiRequest<ApiResponse<{ accessToken: string; user: AdminUser }> & {
+  return apiRequest<
+    ApiResponse<{ accessToken: string; refreshToken: string; user: AdminUser }> & {
     accessToken?: string
+    refreshToken?: string
     user?: AdminUser
-  }>('/admin/auth/google-signin-web', 'POST', {
+  }
+  >('/admin/auth/google-signin-web', 'POST', {
     code,
   })
 }
