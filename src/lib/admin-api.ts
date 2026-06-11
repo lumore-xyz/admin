@@ -91,6 +91,33 @@ type CreditLedgerRow = {
   }
 }
 
+export type LedgerAnalyticsPeriod = 'daily' | 'monthly' | 'yearly'
+
+type LedgerAnalyticsBucket = {
+  key: string
+  label: string
+  count: number
+}
+
+export type CreditLedgerAnalytics = {
+  period: LedgerAnalyticsPeriod
+  timezone?: string
+  range?: {
+    startAt?: string
+    endAt?: string
+  }
+  series: {
+    dailyActive: LedgerAnalyticsBucket[]
+    signups: LedgerAnalyticsBucket[]
+    conversations: LedgerAnalyticsBucket[]
+  }
+  totals?: {
+    dailyActive?: number
+    signups?: number
+    conversations?: number
+  }
+}
+
 type DashboardStats = {
   totalUsers: number
   activeUsers: number
@@ -301,6 +328,19 @@ export const getCreditLedger = async (params: {
   if (params.type) q.set('type', params.type)
   return apiRequest<ApiResponse<CreditLedgerRow[]>>(
     `/admin/credits/ledger?${q.toString()}`
+  )
+}
+
+export const getCreditLedgerAnalytics = async (params?: {
+  period?: LedgerAnalyticsPeriod
+  limit?: number
+}) => {
+  const q = new URLSearchParams()
+  if (params?.period) q.set('period', params.period)
+  if (params?.limit) q.set('limit', String(params.limit))
+  const suffix = q.toString() ? `?${q.toString()}` : ''
+  return apiRequest<ApiResponse<CreditLedgerAnalytics>>(
+    `/admin/credits/analytics${suffix}`
   )
 }
 

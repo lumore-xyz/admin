@@ -3,7 +3,12 @@
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAdminStats } from "@/lib/admin-api";
+import {
+  getAdminStats,
+  getCreditLedgerAnalytics,
+  type CreditLedgerAnalytics,
+  type LedgerAnalyticsPeriod,
+} from "@/lib/admin-api";
 import { useEffect, useState } from "react";
 import BreadcrumbComp from "../layout/shared/breadcrumb/BreadcrumbComp";
 import {
@@ -80,6 +85,12 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [locationMode, setLocationMode] = useState<"global" | "country">("global");
   const [selectedCountry, setSelectedCountry] = useState<string>("");
+  const [analyticsPeriod, setAnalyticsPeriod] =
+    useState<LedgerAnalyticsPeriod>("daily");
+  const [ledgerAnalytics, setLedgerAnalytics] =
+    useState<CreditLedgerAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -107,6 +118,46 @@ export default function DashboardPage() {
     load();
   }, [locationMode, selectedCountry]);
 
+  useEffect(() => {
+    let isCurrent = true;
+    const loadAnalytics = async () => {
+      try {
+        setAnalyticsLoading(true);
+        setAnalyticsError("");
+        const limit =
+          analyticsPeriod === "daily"
+            ? 30
+            : analyticsPeriod === "monthly"
+              ? 12
+              : 5;
+        const res = await getCreditLedgerAnalytics({
+          period: analyticsPeriod,
+          limit,
+        });
+        if (isCurrent) {
+          setLedgerAnalytics(res.data);
+        }
+      } catch (err: unknown) {
+        if (isCurrent) {
+          setAnalyticsError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load credit activity",
+          );
+        }
+      } finally {
+        if (isCurrent) {
+          setAnalyticsLoading(false);
+        }
+      }
+    };
+
+    loadAnalytics();
+    return () => {
+      isCurrent = false;
+    };
+  }, [analyticsPeriod]);
+
   if (loading) return <p>Loading dashboard...</p>;
   if (error) return <p className="text-error">{error}</p>;
 
@@ -116,6 +167,14 @@ export default function DashboardPage() {
   const location = data?.locationAnalytics || {};
   const locationSeries = (location.distribution || []).map((x) => x.count);
   const locationLabels = (location.distribution || []).map((x) => x.label);
+  const ledgerSeries = ledgerAnalytics?.series;
+  const ledgerLabels = (ledgerSeries?.dailyActive || []).map((x) => x.label);
+  const activeUserTitle =
+    analyticsPeriod === "daily"
+      ? "Daily Active Users"
+      : analyticsPeriod === "monthly"
+        ? "Monthly Active Users"
+        : "Yearly Active Users";
 
   const cards = [
     { title: "Total Users", value: data?.totalUsers ?? 0 },
@@ -172,6 +231,33 @@ export default function DashboardPage() {
     plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
   };
 
+  const getLedgerChart = (color: string): ApexOptions => ({
+    chart: { type: "bar", toolbar: { show: false }, height: 300 },
+    xaxis: {
+      categories: ledgerLabels,
+      labels: {
+        rotate: analyticsPeriod === "daily" ? -45 : -35,
+        trim: true,
+        hideOverlappingLabels: true,
+      },
+    },
+    yaxis: {
+      min: 0,
+      decimalsInFloat: 0,
+      labels: {
+        formatter: (value) => `${Math.round(Number(value) || 0)}`,
+      },
+    },
+    dataLabels: { enabled: false },
+    colors: [color],
+    plotOptions: { bar: { borderRadius: 6, columnWidth: "55%" } },
+    tooltip: {
+      y: {
+        formatter: (value) => `${Math.round(Number(value) || 0)}`,
+      },
+    },
+  });
+
   return (
     <div className="space-y-4">
       <BreadcrumbComp title="Lumore Dashboard" items={BCrumb} />
@@ -187,6 +273,83 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <CardTitle>Credit Ledger Activity</CardTitle>
+          <Select
+            value={analyticsPeriod}
+            onValueChange={(value) =>
+              setAnalyticsPeriod(value as LedgerAnalyticsPeriod)
+            }
+          >
+            <SelectTrigger className="w-full md:w-44">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          {analyticsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading activity...</p>
+          ) : analyticsError ? (
+            <p className="text-sm text-error">{analyticsError}</p>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="min-w-0 rounded-md border border-border p-3">
+                <p className="text-sm font-medium">{activeUserTitle}</p>
+                <Chart
+                  type="bar"
+                  options={getLedgerChart("#0ea5e9")}
+                  series={[
+                    {
+                      name: "Users",
+                      data: (ledgerSeries?.dailyActive || []).map(
+                        (x) => x.count,
+                      ),
+                    },
+                  ]}
+                  height={300}
+                />
+              </div>
+              <div className="min-w-0 rounded-md border border-border p-3">
+                <p className="text-sm font-medium">Signups</p>
+                <Chart
+                  type="bar"
+                  options={getLedgerChart("#f97316")}
+                  series={[
+                    {
+                      name: "Users",
+                      data: (ledgerSeries?.signups || []).map((x) => x.count),
+                    },
+                  ]}
+                  height={300}
+                />
+              </div>
+              <div className="min-w-0 rounded-md border border-border p-3">
+                <p className="text-sm font-medium">Matches Created</p>
+                <Chart
+                  type="bar"
+                  options={getLedgerChart("#22c55e")}
+                  series={[
+                    {
+                      name: "Matches",
+                      data: (ledgerSeries?.conversations || []).map(
+                        (x) => x.count,
+                      ),
+                    },
+                  ]}
+                  height={300}
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card>
