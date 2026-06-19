@@ -221,6 +221,38 @@ export type AdminUserGroup = {
   updatedAt?: string
 }
 
+export type AdminAppVersionPlatform = 'android' | 'ios'
+
+export type AdminAppVersion = {
+  _id: string
+  platform: AdminAppVersionPlatform
+  latestVersion: string
+  minimumSupportedVersion: string
+  forceUpdate: boolean
+  playStoreUrl: string
+  appStoreUrl: string
+  updateTitle: string
+  updateMessage: string
+  isActive: boolean
+  lastUpdatedBy?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type AdminAppVersionInput = {
+  platform: AdminAppVersionPlatform
+  latestVersion: string
+  minimumSupportedVersion: string
+  forceUpdate?: boolean
+  playStoreUrl?: string
+  appStoreUrl?: string
+  updateTitle?: string
+  updateMessage?: string
+  isActive?: boolean
+}
+
+export type AdminAppVersionPatch = Partial<AdminAppVersionInput>
+
 type AdminCampaignPayload = {
   channel: 'push' | 'email'
   targetType: 'all' | 'users' | 'groups'
@@ -437,4 +469,34 @@ export const sendAdminCampaign = async (payload: AdminCampaignPayload) => {
 
 export const getAdminCampaignConfig = async () => {
   return apiRequest<ApiResponse<{ fromEmails?: string[] }>>('/admin/notifications/config')
+}
+
+export const getAdminAppVersions = async () => {
+  return apiRequest<ApiResponse<AdminAppVersion[]>>('/admin/app-version')
+}
+
+export const createAdminAppVersion = async (payload: AdminAppVersionInput) => {
+  return apiRequest<ApiResponse<AdminAppVersion>>(
+    '/admin/app-version',
+    'POST',
+    payload
+  )
+}
+
+export const updateAdminAppVersion = async (
+  id: string,
+  payload: AdminAppVersionPatch
+) => {
+  return apiRequest<ApiResponse<AdminAppVersion>>(
+    `/admin/app-version/${id}`,
+    'PUT',
+    payload
+  )
+}
+
+export const deleteAdminAppVersion = async (id: string) => {
+  return apiRequest<ApiResponse<{ id: string }>>(
+    `/admin/app-version/${id}`,
+    'DELETE'
+  )
 }

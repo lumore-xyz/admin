@@ -97,6 +97,12 @@ const SidebarContent: MenuItem[] = [
         url: "/app-config",
       },
       {
+        name: "App Version",
+        icon: "solar:smartphone-update-linear",
+        id: uniqueId(),
+        url: "/app-version",
+      },
+      {
         name: "App Options",
         icon: "solar:settings-linear",
         id: uniqueId(),

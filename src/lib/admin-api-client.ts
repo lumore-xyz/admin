@@ -6,7 +6,7 @@ import {
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
-type ApiMethod = 'GET' | 'POST' | 'PATCH'
+type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
 export class ApiError extends Error {
   status: number
