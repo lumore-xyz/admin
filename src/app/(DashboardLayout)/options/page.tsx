@@ -2,21 +2,71 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { getAdminOptions, patchAdminOptions } from "@/lib/admin-api";
 import { useEffect, useMemo, useState } from "react";
 import BreadcrumbComp from "../layout/shared/breadcrumb/BreadcrumbComp";
+import { OptionRow, type OptionRowItem } from "./OptionRow";
 
-type OptionItem = {
-  label: string;
-  value: string;
-};
-
-type OptionsMap = Record<string, OptionItem[]>;
+type OptionsMap = Record<string, OptionRowItem[]>;
 
 const BCrumb = [{ to: "/", title: "home" }, { title: "options" }];
 
-const emptyItem = (): OptionItem => ({ label: "", value: "" });
+const emptyItem = (): OptionRowItem => ({ label: "", value: "" });
+
+const sanitizeDraftItem = (item: OptionRowItem): OptionRowItem | null => {
+  const label = String(item.label || "").trim();
+  const value = String(item.value || "").trim();
+  if (!label || !value) return null;
+  const next: OptionRowItem = { label, value };
+  if (item.icon?.library && item.icon?.name) {
+    next.icon = {
+      library: item.icon.library,
+      name: item.icon.name,
+    };
+  }
+  return next;
+};
+
+const buildSavePayload = (draft: OptionsMap): OptionsMap => {
+  const payload: OptionsMap = {};
+  for (const [key, items] of Object.entries(draft)) {
+    const cleaned = (items || [])
+      .map(sanitizeDraftItem)
+      .filter((item): item is OptionRowItem => item !== null);
+    if (cleaned.length) payload[key] = cleaned;
+  }
+  return payload;
+};
+
+const cloneRemoteOptions = (response: unknown): OptionsMap => {
+  const options = (response as { options?: Record<string, unknown> })?.options;
+  if (!options || typeof options !== "object") return {};
+  const cloned: OptionsMap = {};
+  for (const [key, items] of Object.entries(options)) {
+    if (!Array.isArray(items)) continue;
+    cloned[key] = items.map((raw) => {
+      const item = raw as Partial<OptionRowItem> & {
+        icon?: { library?: unknown; name?: unknown };
+      };
+      const next: OptionRowItem = {
+        label: String(item?.label || ""),
+        value: String(item?.value || ""),
+      };
+      if (
+        item?.icon &&
+        typeof item.icon.library === "string" &&
+        typeof item.icon.name === "string"
+      ) {
+        next.icon = { library: item.icon.library, name: item.icon.name };
+      }
+      return next;
+    });
+  }
+  return cloned;
+};
+
+const isSameOptionsMap = (a: OptionsMap, b: OptionsMap) =>
+  JSON.stringify(a) === JSON.stringify(b);
 
 export default function OptionsPage() {
   const [remoteOptions, setRemoteOptions] = useState<OptionsMap>({});
@@ -33,22 +83,19 @@ export default function OptionsPage() {
     [draftOptions],
   );
 
+  const applyServerOptions = (serverResponse: unknown) => {
+    const next = cloneRemoteOptions(serverResponse);
+    setRemoteOptions(next);
+    setDraftOptions(next);
+  };
+
   const loadOptions = async () => {
     setLoading(true);
     setError("");
     setSuccess("");
     try {
       const response = await getAdminOptions();
-      const nextOptions = response?.data?.options || {};
-      setRemoteOptions(nextOptions);
-      setDraftOptions(
-        Object.fromEntries(
-          Object.entries(nextOptions).map(([key, items]) => [
-            key,
-            Array.isArray(items) ? items.map((item) => ({ ...item })) : [],
-          ]),
-        ),
-      );
+      applyServerOptions(response?.data);
       setVersion(response?.data?.version || "");
       setUpdatedAt(response?.data?.updatedAt || "");
     } catch (err: unknown) {
@@ -62,14 +109,20 @@ export default function OptionsPage() {
     void loadOptions();
   }, []);
 
-  const setRow = (groupKey: string, index: number, next: Partial<OptionItem>) => {
+  const clearTransientMessages = () => setSuccess("");
+
+  const updateRow = (
+    groupKey: string,
+    index: number,
+    next: Partial<OptionRowItem>,
+  ) => {
     setDraftOptions((prev) => {
       const list = [...(prev[groupKey] || [])];
       const current = list[index] || emptyItem();
       list[index] = { ...current, ...next };
       return { ...prev, [groupKey]: list };
     });
-    setSuccess("");
+    clearTransientMessages();
   };
 
   const addRow = (groupKey: string) => {
@@ -77,7 +130,7 @@ export default function OptionsPage() {
       ...prev,
       [groupKey]: [...(prev[groupKey] || []), emptyItem()],
     }));
-    setSuccess("");
+    clearTransientMessages();
   };
 
   const removeRow = (groupKey: string, index: number) => {
@@ -86,7 +139,7 @@ export default function OptionsPage() {
       list.splice(index, 1);
       return { ...prev, [groupKey]: list };
     });
-    setSuccess("");
+    clearTransientMessages();
   };
 
   const resetGroup = (groupKey: string) => {
@@ -94,42 +147,18 @@ export default function OptionsPage() {
       ...prev,
       [groupKey]: (remoteOptions[groupKey] || []).map((item) => ({ ...item })),
     }));
-    setSuccess("");
+    clearTransientMessages();
   };
 
-  const hasChanges = useMemo(
-    () => JSON.stringify(draftOptions) !== JSON.stringify(remoteOptions),
-    [draftOptions, remoteOptions],
-  );
+  const hasChanges = !isSameOptionsMap(draftOptions, remoteOptions);
 
   const saveAll = async () => {
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      const payload: OptionsMap = Object.fromEntries(
-        Object.entries(draftOptions).map(([key, items]) => [
-          key,
-          (items || [])
-            .map((item) => ({
-              label: String(item?.label || "").trim(),
-              value: String(item?.value || "").trim(),
-            }))
-            .filter((item) => item.label && item.value),
-        ]),
-      );
-
-      const response = await patchAdminOptions(payload);
-      const nextOptions = response?.data?.options || {};
-      setRemoteOptions(nextOptions);
-      setDraftOptions(
-        Object.fromEntries(
-          Object.entries(nextOptions).map(([key, items]) => [
-            key,
-            Array.isArray(items) ? items.map((item) => ({ ...item })) : [],
-          ]),
-        ),
-      );
+      const response = await patchAdminOptions(buildSavePayload(draftOptions));
+      applyServerOptions(response?.data);
       setVersion(response?.data?.version || "");
       setUpdatedAt(response?.data?.updatedAt || "");
       setSuccess("Options updated successfully.");
@@ -151,19 +180,31 @@ export default function OptionsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>Version: {version || "-"}</span>
-            <span>Updated: {updatedAt ? new Date(updatedAt).toLocaleString() : "-"}</span>
+            <span>
+              Updated:{" "}
+              {updatedAt ? new Date(updatedAt).toLocaleString() : "-"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => void loadOptions()} disabled={loading || saving}>
+            <Button
+              variant="outline"
+              onClick={() => void loadOptions()}
+              disabled={loading || saving}
+            >
               Refresh
             </Button>
-            <Button onClick={() => void saveAll()} disabled={loading || saving || !hasChanges}>
+            <Button
+              onClick={() => void saveAll()}
+              disabled={loading || saving || !hasChanges}
+            >
               {saving ? "Saving..." : "Save All"}
             </Button>
           </div>
 
           {error ? <p className="text-sm text-error">{error}</p> : null}
-          {success ? <p className="text-sm text-green-600">{success}</p> : null}
+          {success ? (
+            <p className="text-sm text-green-600">{success}</p>
+          ) : null}
           {loading ? <p>Loading...</p> : null}
 
           {!loading ? (
@@ -195,35 +236,13 @@ export default function OptionsPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {(draftOptions[groupKey] || []).map((item, index) => (
-                      <div key={`${groupKey}-${index}`} className="grid grid-cols-12 gap-2">
-                        <Input
-                          value={item?.label || ""}
-                          onChange={(event) =>
-                            setRow(groupKey, index, { label: event.target.value })
-                          }
-                          placeholder="Label"
-                          className="col-span-5"
-                          disabled={saving}
-                        />
-                        <Input
-                          value={item?.value || ""}
-                          onChange={(event) =>
-                            setRow(groupKey, index, { value: event.target.value })
-                          }
-                          placeholder="Value"
-                          className="col-span-5"
-                          disabled={saving}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="col-span-2"
-                          onClick={() => removeRow(groupKey, index)}
-                          disabled={saving}
-                        >
-                          Remove
-                        </Button>
-                      </div>
+                      <OptionRow
+                        key={`${groupKey}-${index}`}
+                        item={item}
+                        disabled={saving}
+                        onChange={(next) => updateRow(groupKey, index, next)}
+                        onRemove={() => removeRow(groupKey, index)}
+                      />
                     ))}
                   </CardContent>
                 </Card>
