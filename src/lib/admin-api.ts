@@ -183,14 +183,6 @@ export type AdminOptionItem = {
 
 export type AdminOptionsMap = Record<string, AdminOptionItem[]>
 
-export type AdminIconCatalogResponse = {
-  libraries: string[]
-  grouped: Array<{
-    category: string
-    icons: AdminOptionIcon[]
-  }>
-  flat: AdminOptionIcon[]
-}
 export type AdminMobileConfig = {
   BASE_URL: string
   SOCKET_URL: string
@@ -424,12 +416,6 @@ export const patchAdminOptions = async (options: AdminOptionsMap) => {
   return apiRequest<ApiResponse<AdminOptionsResponse>>('/admin/options', 'PATCH', {
     options,
   })
-}
-
-export const getOptionIconCatalog = async () => {
-  return apiRequest<ApiResponse<AdminIconCatalogResponse>>(
-    '/admin/options/icon-catalog',
-  )
 }
 
 const MOBILE_CONFIG_ENVIRONMENT = 'production'

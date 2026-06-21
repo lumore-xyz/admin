@@ -17,13 +17,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  getOptionIconCatalog,
-  type AdminIconCatalogResponse,
-  type AdminOptionIcon,
-} from "@/lib/admin-api";
+import { ADMIN_ICON_CATALOG } from "@/lib/iconCatalog";
+import type { AdminOptionIcon } from "@/lib/admin-api";
+import { OptionIconPreview } from "./OptionIconPreview";
 
-type IconLibrary = "Ionicons";
+type IconLibrary = "Lucide";
+
+const ICON_PAGE_SIZE = 100;
+const ICON_CATEGORY = "All icons";
 
 export interface AdminOptionIconValue {
   library: IconLibrary;
@@ -41,40 +42,33 @@ const formatName = (name: string) =>
     .replace(/-/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const lucideIcons: AdminOptionIcon[] = ADMIN_ICON_CATALOG.grouped.find(
+  (group) => group.category === ICON_CATEGORY,
+)?.icons ?? ADMIN_ICON_CATALOG.flat;
+
 export function OptionIconPicker({
   value,
   onChange,
   disabled,
 }: OptionIconPickerProps) {
   const [open, setOpen] = useState(false);
-  const [catalog, setCatalog] = useState<AdminIconCatalogResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [query, setQuery] = useState("");
+  const [visibleLimit, setVisibleLimit] = useState(ICON_PAGE_SIZE);
+
+  const filteredIcons = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return lucideIcons;
+    return lucideIcons.filter((icon) =>
+      icon.name.toLowerCase().includes(normalizedQuery),
+    );
+  }, [query]);
+
+  const visibleIcons = filteredIcons.slice(0, visibleLimit);
+  const hiddenIconCount = filteredIcons.length - visibleIcons.length;
 
   useEffect(() => {
-    if (!open || catalog || loading) return;
-    setLoading(true);
-    setError("");
-    getOptionIconCatalog()
-      .then((response) => {
-        if (response?.success && response?.data) {
-          setCatalog(response.data);
-        } else {
-          setError("Could not load icon catalog");
-        }
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load icons");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [open, catalog, loading]);
-
-  const groupedIcons = useMemo(() => {
-    if (!catalog) return [];
-    return catalog.grouped.filter((group) => group.icons.length > 0);
-  }, [catalog]);
+    setVisibleLimit(ICON_PAGE_SIZE);
+  }, [query, open]);
 
   return (
     <div className="flex items-center gap-2">
@@ -87,15 +81,25 @@ export function OptionIconPicker({
             disabled={disabled}
             className="w-full justify-start gap-2"
           >
-            <Search className="h-4 w-4 opacity-70" />
             {value ? (
-              <span className="truncate font-mono text-xs">
-                {value.name}
-              </span>
+              <>
+                <OptionIconPreview
+                  library={value.library}
+                  name={value.name}
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden
+                />
+                <span className="truncate font-mono text-xs">
+                  {value.name}
+                </span>
+              </>
             ) : (
-              <span className="text-muted-foreground text-xs">
-                Pick an icon (optional)
-              </span>
+              <>
+                <Search className="h-4 w-4 opacity-70" />
+                <span className="text-muted-foreground text-xs">
+                  Pick an icon (optional)
+                </span>
+              </>
             )}
           </Button>
         </PopoverTrigger>
@@ -104,36 +108,29 @@ export function OptionIconPicker({
           side="bottom"
           className="w-80 p-0"
         >
-          <Command shouldFilter>
-            <CommandInput placeholder="Search Ionicons..." />
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Search all Lucide icons..."
+              value={query}
+              onValueChange={setQuery}
+            />
             <CommandList className="max-h-72">
-              {loading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Loading icons...
-                </div>
-              ) : null}
-              {error ? (
-                <div className="py-6 text-center text-sm text-error">
-                  {error}
-                </div>
-              ) : null}
-              {!loading && !error && groupedIcons.length === 0 ? (
+              {filteredIcons.length === 0 ? (
                 <CommandEmpty>No icons available.</CommandEmpty>
-              ) : null}
-              {groupedIcons.map((group) => (
+              ) : (
                 <CommandGroup
-                  key={group.category}
-                  heading={group.category}
+                  heading={`${filteredIcons.length.toLocaleString()} Lucide icons`}
                   className="[&_[cmdk-group-heading]]:text-xs"
                 >
-                  {group.icons.map((icon: AdminOptionIcon) => {
-                    const isSelected = value?.name === icon.name;
+                  {visibleIcons.map((icon) => {
+                    const isSelected =
+                      value?.library === icon.library && value?.name === icon.name;
                     return (
                       <CommandItem
                         key={`${icon.library}:${icon.name}`}
                         value={icon.name}
                         onSelect={() => {
-                          onChange({ library: "Ionicons", name: icon.name });
+                          onChange({ library: "Lucide", name: icon.name });
                           setOpen(false);
                         }}
                         className="flex items-center gap-2"
@@ -147,10 +144,12 @@ export function OptionIconPicker({
                           }
                           aria-hidden
                         >
-                          {/* Visual placeholder — admin cannot render Ionicons */}
-                          <span className="text-[10px] font-bold">
-                            {icon.name.charAt(0).toUpperCase()}
-                          </span>
+                          <OptionIconPreview
+                            library={icon.library}
+                            name={icon.name}
+                            className="h-4 w-4"
+                            aria-hidden
+                          />
                         </span>
                         <span className="truncate font-mono text-xs">
                           {icon.name}
@@ -159,7 +158,22 @@ export function OptionIconPicker({
                     );
                   })}
                 </CommandGroup>
-              ))}
+              )}
+              {hiddenIconCount > 0 ? (
+                <div className="border-t p-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() =>
+                      setVisibleLimit((current) => current + ICON_PAGE_SIZE)
+                    }
+                  >
+                    Show {Math.min(ICON_PAGE_SIZE, hiddenIconCount)} more
+                  </Button>
+                </div>
+              ) : null}
             </CommandList>
           </Command>
         </PopoverContent>

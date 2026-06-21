@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Icon catalog is now bundled with the admin.** `OptionIconPicker` reads from `lib/iconCatalog.ts`, which derives its list from `lucide-react/dynamic`'s `iconNames`. The picker no longer makes a `GET /admin/options/icon-catalog` request — the list is in sync with the installed `lucide-react` package and works offline / behind the firewall.
+
+### Removed
+- `getOptionIconCatalog` and the `AdminIconCatalogResponse` type from `lib/admin-api.ts` (no callers remain).
+
 ## [1.1.0] – Icon picker for dynamic options, options page cleanup
 
 ### Added

@@ -8,6 +8,7 @@ import {
   OptionIconPicker,
   formatOptionIconName,
 } from "./OptionIconPicker";
+import { OptionIconPreview } from "./OptionIconPreview";
 
 export interface OptionRowItem {
   label: string;
@@ -21,14 +22,6 @@ interface OptionRowProps {
   onChange: (next: Partial<OptionRowItem>) => void;
   onRemove: () => void;
 }
-
-const normalizeIcon = (
-  input: { library: string; name: string } | null | undefined,
-): { library: "Ionicons"; name: string } | null => {
-  if (!input) return null;
-  if (input.library !== "Ionicons" || !input.name) return null;
-  return { library: "Ionicons", name: input.name };
-};
 
 export function OptionRow({ item, disabled, onChange, onRemove }: OptionRowProps) {
   return (
@@ -49,7 +42,7 @@ export function OptionRow({ item, disabled, onChange, onRemove }: OptionRowProps
       />
       <div className="col-span-3">
         <OptionIconPicker
-          value={normalizeIcon(item.icon)}
+          value={item.icon}
           onChange={(next) => onChange({ icon: next })}
           disabled={disabled}
         />
@@ -65,8 +58,17 @@ export function OptionRow({ item, disabled, onChange, onRemove }: OptionRowProps
       </Button>
       {item.icon ? (
         <div className="col-span-12 -mt-1">
-          <Badge variant="secondary" className="font-mono text-xs">
-            Ionicons · {formatOptionIconName(item.icon.name)}
+          <Badge
+            variant="secondary"
+            className="gap-1.5 font-mono text-xs"
+          >
+            <OptionIconPreview
+              library={item.icon.library}
+              name={item.icon.name}
+              className="h-3.5 w-3.5"
+              aria-hidden
+            />
+            {item.icon.library} · {formatOptionIconName(item.icon.name)}
           </Badge>
         </div>
       ) : null}

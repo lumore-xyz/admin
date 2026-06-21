@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { loginAdminWithGoogle } from "@/lib/admin-api";
 import { bootstrapAdminSession, setAdminSession } from "@/lib/admin-auth";
 import { useGoogleLogin } from "@react-oauth/google";
-import { Chrome } from "lucide-react";
+import { IconBrandGoogle } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -86,7 +86,7 @@ export const Login = () => {
               disabled={loading}
               onClick={() => googleLogin()}
             >
-              <Chrome size={16} />
+              <IconBrandGoogle size={16} />
               {loading ? "Signing in..." : "Continue with Google"}
             </Button>
             <div className="flex items center gap-2 justify-center mt-6 flex-wrap">
